@@ -34,8 +34,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -815,6 +817,8 @@ fun MainDiagnosticApp(viewModel: NetworkViewModel) {
         if (results.containsKey(android.Manifest.permission.READ_PHONE_STATE)) {
             phoneStateGranted = results[android.Manifest.permission.READ_PHONE_STATE] == true
         }
+        // Always allow proceeding after user interacts with permission prompt
+        skipPermissionsRationale = true
         viewModel.refreshAll()
     }
 
@@ -855,6 +859,13 @@ fun PermissionsRationaleScreen(
     onSkip: () -> Unit,
     trans: (String, String) -> String
 ) {
+    val scrollState = rememberScrollState()
+
+    // Handle back button on rationale screen to continue to dashboard
+    BackHandler {
+        onSkip()
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background
@@ -863,14 +874,17 @@ fun PermissionsRationaleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Elegant glowing circle icon with Clean Minimalism theme
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(76.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
@@ -888,28 +902,28 @@ fun PermissionsRationaleScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 text = trans("Wymagane Uprawnienia", "Permissions Required"),
                 color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 24.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = trans("Aby wyświetlić szczegółowe parametry Wi-Fi oraz sieci komórkowej, Android wymaga przyznania dwóch uprawnień systemowych. Zapewniamy pełne bezpieczeństwo.", "To display fine-grained parameters for Wi-Fi and mobile networks, Android requires two system permissions. We assure complete privacy & security of your data."),
+                text = trans("Aby wyświetlić szczegółowe parametry Wi-Fi oraz sieci komórkowej, Android wymaga przyznania dwóch uprawnień systemowych. Zapewniamy pełne bezpieczeństwo danych.", "To display fine-grained parameters for Wi-Fi and mobile networks, Android requires two system permissions. We assure complete privacy & security of your data."),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 12.dp)
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Rationale status items in container style
             PermissionRequirementCard(
@@ -921,7 +935,7 @@ fun PermissionsRationaleScreen(
                 trans = trans
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             PermissionRequirementCard(
                 title = trans("2. Stan Telefonu i Połączeń (READ_PHONE_STATE)", "2. Phone State & Calls (READ_PHONE_STATE)"),
@@ -932,19 +946,19 @@ fun PermissionsRationaleScreen(
                 trans = trans
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
             Button(
                 onClick = onRequestPermissions,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(54.dp)
                     .testTag("grant_permissions_button"),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(16.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
                 Icon(
@@ -956,23 +970,29 @@ fun PermissionsRationaleScreen(
                 Text(
                     text = trans("Przyznaj Uprawnienia", "Grant Permissions"),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 15.sp
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            TextButton(
+            OutlinedButton(
                 onClick = onSkip,
-                modifier = Modifier.height(48.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .testTag("skip_permissions_button"),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    text = trans("Kontynuuj z ograniczonymi funkcjami", "Continue with limited functionality"),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium,
+                    text = trans("Przejdź do aplikacji (pomiń)", "Proceed to app (skip)"),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -1104,15 +1124,18 @@ fun DashboardScreen(viewModel: NetworkViewModel) {
                     .padding(horizontal = 20.dp, vertical = 10.dp)
                     .fillMaxWidth()
             ) {
+                // ROW 1: Logo + "netinfo" + Coffee cup on left, Theme + Language on right (aligned to right!)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(38.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
@@ -1121,10 +1144,10 @@ fun DashboardScreen(viewModel: NetworkViewModel) {
                                 imageVector = Icons.Default.NetworkCheck,
                                 contentDescription = trans("Logo aplikacji", "App Logo"),
                                 tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "netinfo",
                             color = MaterialTheme.colorScheme.onBackground,
@@ -1155,11 +1178,12 @@ fun DashboardScreen(viewModel: NetworkViewModel) {
                         }
                     }
 
+                    // Wyrównane do prawej ikony: Tryb wyświetlania (motyw) oraz Język
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Dynamic Dark/Light Theme Switcher, positioned exactly between "netinfo" logo/title and the "EN" button
+                        // Dynamic Dark/Light Theme Switcher
                         IconButton(
                             onClick = { viewModel.toggleTheme() },
                             modifier = Modifier
@@ -1177,7 +1201,7 @@ fun DashboardScreen(viewModel: NetworkViewModel) {
                             )
                         }
 
-                        // Language Toggle button in top bar, matches our minimalist styling
+                        // Language Toggle button
                         IconButton(
                             onClick = { viewModel.toggleLanguage() },
                             modifier = Modifier
@@ -1194,34 +1218,51 @@ fun DashboardScreen(viewModel: NetworkViewModel) {
                                 fontSize = 11.sp
                             )
                         }
-
-                        // Minimalist green real-time indicator badge
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isOffline) MaterialTheme.colorScheme.error else Color(0xFFB3F2AD))
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isOffline) trans("Offline", "Offline") else trans("Na Żywo", "Live"),
-                                color = if (isOffline) MaterialTheme.colorScheme.error else Color(0xFFB3F2AD),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // ROW 2 (Linijkę niżej): Napis Live / Offline wyrównany czytelnie
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = trans("Diagnostyka w czasie rzeczywistym", "Real-time diagnostics"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    // Minimalist green real-time indicator badge (Na Żywo / Offline)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                            .testTag("live_indicator_badge")
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (isOffline) MaterialTheme.colorScheme.error else Color(0xFFB3F2AD))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isOffline) trans("Offline", "Offline") else trans("Na Żywo", "Live"),
+                            color = if (isOffline) MaterialTheme.colorScheme.error else Color(0xFFB3F2AD),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
                 
                 // TAB NAVIGATION - ELEGANT CLEAN FLAT SURFACE with 3 tabs!
                 TabRow(
